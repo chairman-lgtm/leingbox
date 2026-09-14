@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Leingbox Finance</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#f4f5f7;color:#111}
+.hidden{display:none!important}.login{min-height:100vh;display:grid;place-items:center;padding:24px}.card{background:#fff;border:1px solid #e7e7e7;border-radius:22px;padding:24px}
+.login .card{width:min(410px,100%);box-shadow:0 18px 55px #00000012}.logo{font-size:13px;font-weight:900;letter-spacing:.2em}
+h1{margin:12px 0 4px}.muted{color:#777;font-size:13px}label{display:block;font-size:13px;font-weight:700;margin:16px 0 7px}
+input{width:100%;padding:13px 14px;border:1px solid #e4e4e4;border-radius:13px;font-size:16px;outline:none}
+button{border:0;border-radius:13px;padding:12px 15px;font-weight:800;cursor:pointer}.primary{background:#111;color:#fff}
+.login button{width:100%;margin-top:20px}.error{color:#b42318;font-size:13px;min-height:18px;margin-top:10px}
+header{height:76px;background:#fff;border-bottom:1px solid #e7e7e7;display:flex;align-items:center;justify-content:space-between;padding:0 max(16px,calc((100vw - 980px)/2));position:sticky;top:0}
+.user{display:flex;align-items:center;gap:9px}.pill{background:#eee;border-radius:999px;padding:8px 11px;font-size:12px;font-weight:800}.logout{background:#eee}
+main{width:min(980px,calc(100% - 28px));margin:22px auto 45px;display:grid;gap:17px}
+.fields{display:grid;grid-template-columns:1.5fr 1fr;gap:14px}.money{position:relative}.money span{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#777;font-size:13px}.money input{padding-left:42px}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:18px}.sum{background:#f7f7f7;border-radius:15px;padding:17px}.sum span{display:block;color:#777;font-size:12px;margin-bottom:7px}.sum strong{font-size:21px}.balance{background:#111;color:#fff}.balance span{color:#ccc}
+.head{display:flex;justify-content:space-between;align-items:center;gap:12px}.head h3{margin:0}.head p{margin:5px 0 0}.add{white-space:nowrap}
+.list{display:grid;gap:9px;margin-top:15px}.row{display:grid;grid-template-columns:1fr 220px auto;gap:9px;padding:10px;background:#fafafa;border:1px solid #e7e7e7;border-radius:15px}.delete{background:#eee;color:#555}
+.empty{text-align:center;color:#888;padding:26px;border:1px dashed #d5d5d5;border-radius:15px;margin-top:15px}
+@media(max-width:700px){.fields,.summary,.row{grid-template-columns:1fr}.head{align-items:stretch;flex-direction:column}.add{width:100%}}
+</style>
+</head>
+<body>
+<section id="login" class="login">
+ <div class="card">
+  <div class="logo">LEINGBOX</div><h1>Finance Login</h1><div class="muted">财务记账系统</div>
+  <label>Username</label><input id="username" placeholder="UMO / MARS" autocomplete="username">
+  <label>Password</label><input id="password" type="password" placeholder="请输入密码" autocomplete="current-password">
+  <button id="loginBtn" class="primary">LOGIN</button><div id="err" class="error"></div>
+ </div>
+</section>
+<section id="app" class="hidden">
+<header><div><div class="logo">LEINGBOX</div><b>Finance</b></div><div class="user"><span id="who" class="pill"></span><button id="logout" class="logout">Logout</button></div></header>
+<main>
+ <section class="card">
+  <div class="fields">
+   <div><label>名字</label><input id="name" placeholder="输入名字"></div>
+   <div><label>总数</label><div class="money"><span>RM</span><input id="total" type="number" min="0" step=".01" placeholder="0.00"></div></div>
+  </div>
+  <div class="summary">
+   <div class="sum"><span>总数</span><strong id="totalText">RM 0.00</strong></div>
+   <div class="sum"><span>- 价钱</span><strong id="spentText">RM 0.00</strong></div>
+   <div class="sum balance"><span>剩多少</span><strong id="leftText">RM 0.00</strong></div>
+  </div>
+ </section>
+ <section class="card">
+  <div class="head"><div><h3>项目</h3><p class="muted">新增、修改、删除都会自动计算</p></div><button id="add" class="primary add">＋ 添加项目</button></div>
+  <div id="list" class="list"></div><div id="empty" class="empty">还没有项目</div>
+ </section>
+</main>
+</section>
+<script>
+const $=x=>document.getElementById(x);
+const USERS={UMO:"888888",MARS:"888888"};let user=null,data={name:"",total:0,items:[]};
+const key=()=>`leingbox_${user}`,rm=n=>"RM "+Number(n||0).toLocaleString("en-MY",{minimumFractionDigits:2,maximumFractionDigits:2});
+function load(){try{data=JSON.parse(localStorage.getItem(key()))||{name:"",total:0,items:[]}}catch(e){data={name:"",total:0,items:[]}}}
+function save(){localStorage.setItem(key(),JSON.stringify(data));render()}
+function render(){
+ $("name").value=data.name||"";$("total").value=data.total||"";
+ let spent=data.items.reduce((s,x)=>s+Number(x.price||0),0);
+ $("totalText").textContent=rm(data.total);$("spentText").textContent=rm(spent);$("leftText").textContent=rm(Number(data.total||0)-spent);$("who").textContent=user;
+ $("list").innerHTML="";$("empty").style.display=data.items.length?"none":"block";
+ data.items.forEach((x,i)=>{
+  let r=document.createElement("div");r.className="row";
+  r.innerHTML='<input class="n" placeholder="项目名字"><div class="money"><span>RM</span><input class="p" type="number" min="0" step=".01" placeholder="0.00"></div><button class="delete">删除</button>';
+  let n=r.querySelector(".n"),p=r.querySelector(".p");n.value=x.name||"";p.value=x.price||"";
+  n.oninput=()=>{data.items[i].name=n.value;save()};p.oninput=()=>{data.items[i].price=Number(p.value||0);save()};
+  r.querySelector(".delete").onclick=()=>{if(confirm("确定删除这个项目吗？")){data.items.splice(i,1);save()}};
+  $("list").appendChild(r)
+ })
+}
+function login(){
+ let u=$("username").value.trim().toUpperCase(),p=$("password").value;
+ if(!USERS[u]||USERS[u]!==p){$("err").textContent="Username 或 Password 不正确";return}
+ user=u;sessionStorage.setItem("leingbox_user",u);load();$("login").classList.add("hidden");$("app").classList.remove("hidden");$("err").textContent="";render()
+}
+$("loginBtn").onclick=login;$("password").onkeydown=e=>{if(e.key==="Enter")login()};
+$("logout").onclick=()=>{sessionStorage.removeItem("leingbox_user");location.reload()};
+$("name").oninput=e=>{data.name=e.target.value;save()};$("total").oninput=e=>{data.total=Number(e.target.value||0);save()};
+$("add").onclick=()=>{data.items.push({name:"",price:0});save()};
+let old=sessionStorage.getItem("leingbox_user");if(old&&USERS[old]){user=old;load();$("login").classList.add("hidden");$("app").classList.remove("hidden");render()}
+</script>
+</body></html>
